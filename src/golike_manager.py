@@ -50,25 +50,8 @@ class GolikeManager:
         self.name_account = info_account['data'].get('name')
         self.username_account = info_account['data'].get('username')
 
-        info_instagram = self.session.get(
-            'https://gateway.golike.net/api/instagram-account',
-            impersonate='safari_ios',
-            headers=self.headers,
-            timeout=15
-        ).json()
-
-        for ig in info_instagram.get('data', []):
-            self.account['instagram_accounts'].append({
-                'id': ig.get('instagram_id'),
-                'golike_account_id': self.id_account,
-                'golike_username': self.username_account,
-                'id_account_golike': ig.get('id'),
-                'instagram_username': ig.get('instagram_username'),
-                "status": "active",
-                "created_at": datetime.utcnow().isoformat() + "Z",  # ✅ Dynamic timestamp
-                "last_check": None,
-                "cookie": ''
-            })
+        # Không load danh sách Instagram accounts từ API.
+        # Chỉ lưu những nick mà user tự nhập cookie (xem account_service.update_instagram_cookies)
 
         # Ghi vào dict account
         self.account['pending_coin'] = self.pending_coin

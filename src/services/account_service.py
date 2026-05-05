@@ -121,29 +121,86 @@ class AccountService:
         }
     
     def update_instagram_cookies(self, account_indices, live_cookies):
-        """Update Instagram cookies for selected accounts"""
+        """
+        Lưu cookie Instagram vào tài khoản GoLike.
+        - Nếu nick chưa có trong list → thêm mới
+        - Nếu nick đã có → cập nhật cookie
+        Chỉ lưu những nick user tự nhập, không load từ API GoLike.
+        """
         try:
             if account_indices == 'all':
                 selected_accounts = self.accounts
             else:
                 selected_accounts = [self.get_account_by_index(int(account_indices))]
-            
-            # Update cookies
+
             for acc in selected_accounts:
-                for ig in acc.get('instagram_accounts', []):
-                    ig_username = ig.get('instagram_username', '').lower()
-                    
-                    # Find corresponding cookie
-                    for live_item in live_cookies:
-                        if live_item['username'].lower() == ig_username:
-                            ig['cookie'] = live_item['cookie']
-                            ig['status'] = 'active'
-                            ig['last_check'] = live_item['checked_at']
-                            logger.info(f"Updated cookie for {ig_username}")
-                            break
-            
+                ig_list = acc.setdefault('instagram_accounts', [])
+
+                # Build lookup: instagram_username (lower) → index trong list
+                existing_map = {
+                    ig.get('instagram_username', '').lower(): i
+                    for i, ig in enumerate(ig_list)
+                }
+
+                for live_item in live_cookies:
+                    username_lower = live_item['username'].lower()
+
+                    if username_lower in existing_map:
+                        # Cập nhật cookie nick đã có
+                        idx = existing_map[username_lower]
+                        ig_list[idx]['cookie'] = live_item['cookie']
+                        ig_list[idx]['status'] = 'active'
+                        ig_list[idx]['last_check'] = live_item.get('checked_at')
+                        logger.info(f"Updated cookie for {live_item['username']}")
+                    else:
+                        # Thêm nick mới (user nhập lần đầu)
+                        # Lấy id_account_golike từ API GoLike nếu cần
+                        ig_id_golike = live_item.get('id_account_golike') or self._fetch_ig_id(
+                            acc.get('authorization'), live_item['username']
+                        )
+                        new_ig = {
+                            'id': live_item.get('ig_id', ''),
+                            'golike_account_id': acc.get('id_account'),
+                            'golike_username': acc.get('username_account'),
+                            'id_account_golike': ig_id_golike,
+                            'instagram_username': live_item['username'],
+                            'status': 'active',
+                            'created_at': datetime.utcnow().isoformat() + 'Z',
+                            'last_check': live_item.get('checked_at'),
+                            'cookie': live_item['cookie'],
+                        }
+                        ig_list.append(new_ig)
+                        existing_map[username_lower] = len(ig_list) - 1
+                        logger.info(f"Added new IG account: {live_item['username']}")
+
             return self.save_accounts()
-            
+
         except Exception as e:
             logger.error(f"Error updating cookies: {e}")
             return False
+
+    def _fetch_ig_id(self, authorization, ig_username):
+        """
+        Lấy id_account_golike của nick Instagram từ API GoLike.
+        Trả về None nếu không tìm thấy hoặc lỗi.
+        """
+        try:
+            from ..golike_manager import GolikeManager
+            from curl_cffi import requests as cffi_requests
+            from .utils.headers import Headers
+
+            headers = Headers.golike(authorization)
+            session = cffi_requests.Session()
+            resp = session.get(
+                'https://gateway.golike.net/api/instagram-account',
+                impersonate='safari_ios',
+                headers=headers,
+                timeout=10
+            ).json()
+
+            for ig in resp.get('data', []):
+                if ig.get('instagram_username', '').lower() == ig_username.lower():
+                    return ig.get('id')
+        except Exception as e:
+            logger.warning(f"Cannot fetch ig_id for {ig_username}: {e}")
+        return None

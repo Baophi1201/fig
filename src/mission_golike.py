@@ -73,7 +73,11 @@ class Get_golike:
             
             # ✅ Validate data structure
             if not isinstance(data, dict):
-                logger.error(f"❌ Data is not a dict: {type(data)}")
+                # GoLike trả về list rỗng [] khi hết job - đây là bình thường
+                if isinstance(data, list) and len(data) == 0:
+                    logger.warning(f"⚠️ No jobs available (empty list returned)")
+                else:
+                    logger.error(f"❌ Data is not a dict: {type(data)} - value: {str(data)[:100]}")
                 return {'status': 400}
             
             # ✅ Validate required fields

@@ -46,29 +46,12 @@ class CookieService:
         return valid_cookies, invalid_lines
     
     def validate_cookies_for_account(self, valid_cookies, selected_accounts):
-        """Validate cookies belong to selected GoLike accounts"""
-        # Get valid Instagram usernames from selected accounts
-        valid_ig_usernames = set()
-        for acc in selected_accounts:
-            for ig in acc.get('instagram_accounts', []):
-                valid_ig_usernames.add(ig.get('instagram_username', '').lower())
-        
-        validated_cookies = []
-        invalid_cookies = []
-        
-        for cookie_data in valid_cookies:
-            username = cookie_data['username']
-            
-            if username.lower() not in valid_ig_usernames:
-                invalid_cookies.append((
-                    cookie_data['line_number'], 
-                    f"{username}|{cookie_data['cookie'][:50]}...", 
-                    f"Username '{username}' không có trong tài khoản GoLike"
-                ))
-            else:
-                validated_cookies.append(cookie_data)
-        
-        return validated_cookies, invalid_cookies
+        """
+        Trước đây validate nick phải có trong danh sách GoLike.
+        Giờ chấp nhận tất cả nick user nhập — không cần load list từ API.
+        Trả về toàn bộ valid_cookies, không có invalid.
+        """
+        return valid_cookies, []
     
     def check_cookies(self, validated_cookies):
         """Check cookie validity (LIVE/DIE)"""
