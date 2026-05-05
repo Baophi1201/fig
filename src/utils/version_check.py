@@ -17,7 +17,7 @@ from packaging import version
 CURRENT_VERSION = "1.0.0"
 
 # URL raw của file version.json trong repo GitHub
-VERSION_URL = "VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
+VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
 # ====================================================
 
 
