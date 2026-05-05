@@ -11,49 +11,46 @@ import os
 import sys
 import subprocess
 import shutil
+import zipfile
+import io
 import requests
 from packaging import version
 
 # ===================== CẤU HÌNH =====================
-CURRENT_VERSION = "1.0.2"
+CURRENT_VERSION = "1.0.3"
 
 # URL raw của file version.json trong repo GitHub
 VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
+ZIP_URL = "https://github.com/Baophi1201/fig/archive/refs/heads/main.zip"
 # ====================================================
 
 
-def _run_git_pull() -> bool:
+def _download_and_update() -> bool:
     """
-    Chạy git pull để lấy code mới nhất.
-    Trả về True nếu thành công, False nếu thất bại.
+    Tải ZIP từ GitHub và giải nén để cập nhật tool.
+    Không cần Git, chạy được trên mọi thiết bị.
     """
-    if not shutil.which("git"):
-        print("⚠ Git chưa được cài trên thiết bị.")
-        print("Vui lòng tải lại tool từ GitHub.")
-        return False
-
     try:
-        result = subprocess.run(
-            ["git", "pull"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(os.path.abspath(__file__))
-                )
+        print("📥 Đang tải bản mới...")
+
+        response = requests.get(ZIP_URL, timeout=20)
+        response.raise_for_status()
+
+        project_root = os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__))
             )
         )
 
-        if result.returncode == 0:
-            print("✅ Update thành công!")
-            return True
+        with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+            temp_dir = os.path.join(project_root, "temp_update")
+            zip_ref.extractall(temp_dir)
 
-        print(f"❌ git pull lỗi:\n{result.stderr}")
-        return False
+        print("✅ Update thành công!")
+        return True
 
     except Exception as e:
-        print(f"❌ Lỗi update: {e}")
+        print(f"❌ Update lỗi: {e}")
         return False
 
 
@@ -87,12 +84,12 @@ def check_version() -> None:
                 f"    Phiên bản tối thiểu yêu cầu: v{min_ver}\n"
                 f"    Tool sẽ tự động cập nhật ngay bây giờ...\n"
             )
-            if _run_git_pull():
+            if _download_and_update():
                 _restart()
             else:
                 print(
                     "\n❌  Không thể tự cập nhật.\n"
-                    "    Vui lòng chạy thủ công: git pull\n"
+                    "    Vui lòng tải bản mới thủ công từ GitHub.\n"
                     "    rồi mở lại tool.\n"
                 )
                 sys.exit(1)
@@ -109,7 +106,7 @@ def check_version() -> None:
                 answer = "n"
 
             if answer in ("", "y", "yes"):
-                if _run_git_pull():
+                if _download_and_update():
                     _restart()
                 else:
                     print("⚠️  Cập nhật thất bại. Tiếp tục với phiên bản cũ...\n")
