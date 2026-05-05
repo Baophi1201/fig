@@ -16,7 +16,7 @@ import requests
 from packaging import version
 
 # ===================== CẤU HÌNH =====================
-CURRENT_VERSION = "1.0.6"
+CURRENT_VERSION = "1.0.7"
 
 # URL raw của file version.json trong repo GitHub
 VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
@@ -24,19 +24,30 @@ ZIP_URL = "https://github.com/Baophi1201/fig/archive/refs/heads/main.zip"
 # ====================================================
 
 
+def _detect_platform() -> str:
+    """Nhận diện môi trường chạy: termux, ashell, hoặc unknown."""
+    if "TERMUX_VERSION" in os.environ:
+        return "termux"
+    elif "IOS_SYSTEM" in os.environ or "ASHELL" in os.environ:
+        return "ashell"
+    return "unknown"
+
+
 def _download_and_update() -> bool:
     """
     Tải ZIP từ GitHub, giải nén và copy đè lên thư mục gốc.
     Không cần Git, chạy được trên mọi thiết bị kể cả điện thoại.
     """
-    project_root = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))
-        )
-    )
+    project_root = os.getcwd()
     temp_dir = os.path.join(project_root, "temp_update")
 
     try:
+        platform_name = _detect_platform()
+        if platform_name == "termux":
+            print("📱 Android (Termux) detected")
+        elif platform_name == "ashell":
+            print("🍎 iPhone/iPad (a-Shell) detected")
+
         print("📥 Đang tải bản mới từ GitHub...")
         response = requests.get(ZIP_URL, timeout=30)
         response.raise_for_status()
