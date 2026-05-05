@@ -3,13 +3,12 @@ Version checker - Kiểm tra và tự động cập nhật tool từ GitHub.
 
 Luồng hoạt động:
   1. Fetch version.json từ GitHub
-  2. Nếu version hiện tại < min_version → bắt buộc update (tự git pull + restart)
+  2. Nếu version hiện tại < min_version → bắt buộc update (tải ZIP + restart)
   3. Nếu version hiện tại < current_version → hỏi user có muốn update không
   4. Nếu không có mạng → cảnh báo rồi tiếp tục
 """
 import os
 import sys
-import subprocess
 import shutil
 import zipfile
 import io
@@ -17,7 +16,7 @@ import requests
 from packaging import version
 
 # ===================== CẤU HÌNH =====================
-CURRENT_VERSION = "1.0.3"
+CURRENT_VERSION = "1.0.4"
 
 # URL raw của file version.json trong repo GitHub
 VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
@@ -27,24 +26,46 @@ ZIP_URL = "https://github.com/Baophi1201/fig/archive/refs/heads/main.zip"
 
 def _download_and_update() -> bool:
     """
-    Tải ZIP từ GitHub và giải nén để cập nhật tool.
-    Không cần Git, chạy được trên mọi thiết bị.
+    Tải ZIP từ GitHub, giải nén và copy đè lên thư mục gốc.
+    Không cần Git, chạy được trên mọi thiết bị kể cả điện thoại.
     """
-    try:
-        print("📥 Đang tải bản mới...")
+    project_root = os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))
+        )
+    )
+    temp_dir = os.path.join(project_root, "temp_update")
 
-        response = requests.get(ZIP_URL, timeout=20)
+    try:
+        print("📥 Đang tải bản mới từ GitHub...")
+        response = requests.get(ZIP_URL, timeout=30)
         response.raise_for_status()
 
-        project_root = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__))
-            )
-        )
-
+        print("📦 Đang giải nén...")
         with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-            temp_dir = os.path.join(project_root, "temp_update")
             zip_ref.extractall(temp_dir)
+
+        # Thư mục bên trong ZIP thường là "fig-main"
+        extracted = os.path.join(temp_dir, "fig-main")
+        if not os.path.isdir(extracted):
+            # Fallback: lấy thư mục đầu tiên trong temp
+            subdirs = [d for d in os.listdir(temp_dir)
+                       if os.path.isdir(os.path.join(temp_dir, d))]
+            if not subdirs:
+                raise FileNotFoundError("Không tìm thấy thư mục sau khi giải nén.")
+            extracted = os.path.join(temp_dir, subdirs[0])
+
+        print("🔄 Đang cập nhật file...")
+        # Copy từng file/folder từ bản mới đè lên thư mục gốc
+        for item in os.listdir(extracted):
+            src = os.path.join(extracted, item)
+            dst = os.path.join(project_root, item)
+            if os.path.isdir(src):
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy2(src, dst)
 
         print("✅ Update thành công!")
         return True
@@ -52,6 +73,11 @@ def _download_and_update() -> bool:
     except Exception as e:
         print(f"❌ Update lỗi: {e}")
         return False
+
+    finally:
+        # Dọn dẹp thư mục tạm dù thành công hay thất bại
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
 
 
 def _restart() -> None:
