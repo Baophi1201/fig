@@ -16,7 +16,7 @@ import requests
 from packaging import version
 
 # ===================== CẤU HÌNH =====================
-CURRENT_VERSION = "1.0.5"
+CURRENT_VERSION = "1.0.6"
 
 # URL raw của file version.json trong repo GitHub
 VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
@@ -56,16 +56,19 @@ def _download_and_update() -> bool:
             extracted = os.path.join(temp_dir, subdirs[0])
 
         print("🔄 Đang cập nhật file...")
-        # Copy từng file/folder từ bản mới đè lên thư mục gốc
-        for item in os.listdir(extracted):
-            src = os.path.join(extracted, item)
-            dst = os.path.join(project_root, item)
-            if os.path.isdir(src):
-                if os.path.exists(dst):
-                    shutil.rmtree(dst)
-                shutil.copytree(src, dst)
-            else:
-                shutil.copy2(src, dst)
+        # Copy từng file theo cấu trúc thư mục, ghi đè lên thư mục gốc
+        for root, dirs, files in os.walk(extracted):
+            rel_path = os.path.relpath(root, extracted)
+            target_dir = os.path.join(project_root, rel_path)
+
+            if not os.path.exists(target_dir):
+                os.makedirs(target_dir)
+
+            for file in files:
+                src_file = os.path.join(root, file)
+                dst_file = os.path.join(target_dir, file)
+
+                shutil.copy2(src_file, dst_file)
 
         print("✅ Update thành công!")
         return True
