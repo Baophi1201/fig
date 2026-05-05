@@ -9,6 +9,7 @@ Luồng hoạt động:
 """
 import os
 import sys
+import subprocess
 import shutil
 import zipfile
 import io
@@ -16,7 +17,7 @@ import requests
 from packaging import version
 
 # ===================== CẤU HÌNH =====================
-CURRENT_VERSION = "1.0.11"
+CURRENT_VERSION = "1.0.12"
 
 # URL raw của file version.json trong repo GitHub
 VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
@@ -97,7 +98,13 @@ def _download_and_update() -> bool:
 def _restart() -> None:
     """Restart lại process hiện tại với cùng arguments."""
     print("\n🔄  Đang khởi động lại tool...\n")
-    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+    subprocess.Popen(
+        [sys.executable] + sys.argv,
+        shell=False
+    )
+
+    sys.exit(0)
 
 
 def check_version() -> None:
