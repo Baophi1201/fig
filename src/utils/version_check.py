@@ -10,6 +10,7 @@ Luồng hoạt động:
 import os
 import sys
 import subprocess
+import shutil
 import requests
 from packaging import version
 
@@ -26,28 +27,33 @@ def _run_git_pull() -> bool:
     Chạy git pull để lấy code mới nhất.
     Trả về True nếu thành công, False nếu thất bại.
     """
+    if not shutil.which("git"):
+        print("⚠ Git chưa được cài trên thiết bị.")
+        print("Vui lòng tải lại tool từ GitHub.")
+        return False
+
     try:
         result = subprocess.run(
             ["git", "pull"],
             capture_output=True,
             text=True,
             timeout=30,
-            cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            cwd=os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(os.path.abspath(__file__))
+                )
+            )
         )
+
         if result.returncode == 0:
-            print(f"✅  Cập nhật thành công!\n{result.stdout.strip()}")
+            print("✅ Update thành công!")
             return True
-        else:
-            print(f"❌  git pull thất bại:\n{result.stderr.strip()}")
-            return False
-    except FileNotFoundError:
-        print("❌  Không tìm thấy lệnh 'git'. Vui lòng cài Git và thử lại.")
+
+        print(f"❌ git pull lỗi:\n{result.stderr}")
         return False
-    except subprocess.TimeoutExpired:
-        print("❌  git pull timeout. Kiểm tra kết nối mạng.")
-        return False
+
     except Exception as e:
-        print(f"❌  Lỗi khi git pull: {e}")
+        print(f"❌ Lỗi update: {e}")
         return False
 
 
