@@ -3,8 +3,8 @@ Version checker - Kiểm tra và tự động cập nhật tool từ GitHub.
 
 Luồng hoạt động:
   1. Fetch version.json từ GitHub
-  2. Nếu version hiện tại < min_version → bắt buộc update (tải ZIP + restart)
-  3. Nếu version hiện tại < current_version → hỏi user có muốn update không
+  2. Nếu version hiện tại < min_version → tự tải bản mới rồi restart
+  3. Nếu version hiện tại < current_version → hỏi user, nếu đồng ý thì update rồi restart
   4. Nếu không có mạng → cảnh báo rồi tiếp tục
 """
 import os
@@ -16,7 +16,7 @@ import requests
 from packaging import version
 
 # ===================== CẤU HÌNH =====================
-CURRENT_VERSION = "1.0.8"
+CURRENT_VERSION = "1.0.9"
 
 # URL raw của file version.json trong repo GitHub
 VERSION_URL = "https://raw.githubusercontent.com/Baophi1201/fig/main/version.json"
@@ -28,7 +28,7 @@ def _detect_platform() -> str:
     """Nhận diện môi trường chạy: termux, ashell, hoặc unknown."""
     if "TERMUX_VERSION" in os.environ:
         return "termux"
-    elif "IOS_SYSTEM" in os.environ or "ASHELL" in os.environ:
+    elif "IOS_SYSTEM" in os.environ or "ASHELL" in os.environ or sys.platform == "ios":
         return "ashell"
     return "unknown"
 
@@ -38,7 +38,7 @@ def _download_and_update() -> bool:
     Tải ZIP từ GitHub, giải nén và copy đè lên thư mục gốc.
     Không cần Git, chạy được trên mọi thiết bị kể cả điện thoại.
     """
-    project_root = os.getcwd()
+    project_root = os.path.dirname(os.path.abspath(sys.argv[0]))
     temp_dir = os.path.join(project_root, "temp_update")
 
     try:
@@ -104,9 +104,9 @@ def check_version() -> None:
     """
     Kiểm tra version với server GitHub.
 
-    - version < min_version  → bắt buộc update, tự git pull rồi restart
-    - version < current_version → hỏi user, nếu đồng ý thì git pull + restart
-    - Không kết nối được     → cảnh báo nhẹ rồi tiếp tục
+    - version < min_version      → tự tải bản mới rồi restart
+    - version < current_version  → hỏi user, nếu đồng ý thì update rồi restart
+    - Không kết nối được         → cảnh báo nhẹ rồi tiếp tục
     """
     try:
         response = requests.get(VERSION_URL, timeout=5)
