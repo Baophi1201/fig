@@ -1,7 +1,0 @@
-{
-    "jobs_per_account_min": 10,
-    "jobs_per_account_max": 12,
-    "total_jobs_target": 50,
-    "delay_between_jobs_min": 7,
-    "delay_between_jobs_max": 10
-}
